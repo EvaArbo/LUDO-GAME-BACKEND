@@ -1,11 +1,12 @@
 from flask import Blueprint, request, jsonify
-from werkzeug.security import generate_password_hash, check_password_hash
-from app.extensions import db
+from flask_jwt_extended import create_access_token, jwt_required, get_jwt_identity
+from app.extensions import db, bcrypt
 from models.user import User
+from datetime import timedelta
 
 auth_bp = Blueprint("auth", __name__)
 
-# ✅ Register
+# Register
 @auth_bp.route("/register", methods=["POST"])
 def register():
     data = request.get_json()
@@ -16,17 +17,18 @@ def register():
     if not username or not email or not password:
         return jsonify({"error": "All fields are required"}), 400
 
-    if User.query.filter((User.username==username)|(User.email==email)).first():
+    if User.query.filter((User.username == username) | (User.email == email)).first():
         return jsonify({"error": "Username or email already exists"}), 400
 
-    hashed_password = generate_password_hash(password)
+    hashed_password = bcrypt.generate_password_hash(password).decode("utf-8")
     user = User(username=username, email=email, password=hashed_password)
     db.session.add(user)
     db.session.commit()
 
     return jsonify({"message": "User registered", "user_id": user.id}), 201
 
-# ✅ Login
+
+# Login
 @auth_bp.route("/login", methods=["POST"])
 def login():
     data = request.get_json()
@@ -37,23 +39,28 @@ def login():
         return jsonify({"error": "Username and password are required"}), 400
 
     user = User.query.filter_by(username=username).first()
-    if not user or not check_password_hash(user.password, password):
+    if not user or not bcrypt.check_password_hash(user.password, password):
         return jsonify({"error": "Invalid username or password"}), 401
 
-    return jsonify({"message": "Login successful", "user_id": user.id})
+    access_token = create_access_token(identity=str(user.id), expires_delta=timedelta(hours=1))
 
-@auth_bp.route("/user/<int:user_id>", methods=["GET"])
-def get_user(user_id):
+    return jsonify({"message": "Login successful", "access_token": access_token})
+
+
+# Get user
+@auth_bp.route("/user", methods=["GET"])
+@jwt_required()
+def get_user():
+    user_id = get_jwt_identity()
     user = User.query.get_or_404(user_id)
-    return jsonify({
-        "user_id": user.id,
-        "username": user.username,
-        "email": user.email
-    })
+    return jsonify({"user_id": user.id, "username": user.username, "email": user.email})
 
 
-@auth_bp.route("/user/<int:user_id>", methods=["PUT"])
-def update_user(user_id):
+# Update user
+@auth_bp.route("/user", methods=["PUT"])
+@jwt_required()
+def update_user():
+    user_id = get_jwt_identity()
     user = User.query.get_or_404(user_id)
     data = request.get_json()
 
@@ -66,21 +73,18 @@ def update_user(user_id):
     if new_email:
         user.email = new_email
     if new_password:
-        user.password = new_password  # later, hash this!
+        user.password = bcrypt.generate_password_hash(new_password).decode("utf-8")
 
     db.session.commit()
+    return jsonify({"message": "User updated", "user_id": user.id, "username": user.username, "email": user.email})
 
-    return jsonify({
-        "message": "User updated",
-        "user_id": user.id,
-        "username": user.username,
-        "email": user.email
-    })
 
-@auth_bp.route("/user/<int:user_id>", methods=["DELETE"])
-def delete_user(user_id):
+# Delete user
+@auth_bp.route("/user", methods=["DELETE"])
+@jwt_required()
+def delete_user():
+    user_id = get_jwt_identity()
     user = User.query.get_or_404(user_id)
     db.session.delete(user)
     db.session.commit()
-
     return jsonify({"message": "User deleted"})
