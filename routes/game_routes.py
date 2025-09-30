@@ -39,7 +39,7 @@ def get_game(game_id):
     })
 
 
-# ✅ Update game (save progress)
+# Update game (save progress)
 @game_bp.route("/<int:game_id>", methods=["PUT"])
 def update_game(game_id):
     game = Game.query.get_or_404(game_id)
@@ -60,7 +60,7 @@ def update_game(game_id):
     })
 
 
-# ✅ Delete game
+#Delete game
 @game_bp.route("/<int:game_id>", methods=["DELETE"])
 def delete_game(game_id):
     game = Game.query.get_or_404(game_id)
