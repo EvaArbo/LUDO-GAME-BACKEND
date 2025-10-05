@@ -1,14 +1,24 @@
 from flask import Blueprint, request, jsonify
-from flask_jwt_extended import create_access_token, jwt_required, get_jwt_identity
+from flask_jwt_extended import (
+    create_access_token,
+    jwt_required,
+    get_jwt_identity,
+    get_jwt
+)
 from app.extensions import db, bcrypt
 from models.user import User
 from datetime import timedelta
 
 auth_bp = Blueprint("auth", __name__)
 
-# Register
-@auth_bp.route("/register", methods=["POST"])
+def handle_options():
+    return '', 200
+
+@auth_bp.route("/register", methods=["POST", "OPTIONS"])
 def register():
+    if request.method == "OPTIONS":
+        return handle_options()
+    
     data = request.get_json()
     username = data.get("username")
     email = data.get("email")
@@ -27,10 +37,11 @@ def register():
 
     return jsonify({"message": "User registered", "user_id": user.id}), 201
 
-
-# Login
-@auth_bp.route("/login", methods=["POST"])
+@auth_bp.route("/login", methods=["POST", "OPTIONS"])
 def login():
+    if request.method == "OPTIONS":
+        return handle_options()
+    
     data = request.get_json()
     username = data.get("username")
     password = data.get("password")
@@ -43,23 +54,34 @@ def login():
         return jsonify({"error": "Invalid username or password"}), 401
 
     access_token = create_access_token(identity=str(user.id), expires_delta=timedelta(hours=1))
-
     return jsonify({"message": "Login successful", "access_token": access_token})
 
+@auth_bp.route("/logout", methods=["POST", "OPTIONS"])
+@jwt_required()
+def logout():
+    if request.method == "OPTIONS":
+        return handle_options()
 
-# Get user
-@auth_bp.route("/user", methods=["GET"])
+    jti = get_jwt()["jti"]
+    jwt_blocklist.add(jti)
+    return jsonify({"message": "Logout successful"}), 200
+
+@auth_bp.route("/user", methods=["GET", "OPTIONS"])
 @jwt_required()
 def get_user():
+    if request.method == "OPTIONS":
+        return handle_options()
+
     user_id = get_jwt_identity()
     user = User.query.get_or_404(user_id)
     return jsonify({"user_id": user.id, "username": user.username, "email": user.email})
 
-
-# Update user
-@auth_bp.route("/user", methods=["PUT"])
+@auth_bp.route("/user", methods=["PUT", "OPTIONS"])
 @jwt_required()
 def update_user():
+    if request.method == "OPTIONS":
+        return handle_options()
+
     user_id = get_jwt_identity()
     user = User.query.get_or_404(user_id)
     data = request.get_json()
@@ -78,13 +100,35 @@ def update_user():
     db.session.commit()
     return jsonify({"message": "User updated", "user_id": user.id, "username": user.username, "email": user.email})
 
-
-# Delete user
-@auth_bp.route("/user", methods=["DELETE"])
+@auth_bp.route("/user", methods=["DELETE", "OPTIONS"])
 @jwt_required()
 def delete_user():
+    if request.method == "OPTIONS":
+        return handle_options()
+
     user_id = get_jwt_identity()
     user = User.query.get_or_404(user_id)
     db.session.delete(user)
     db.session.commit()
     return jsonify({"message": "User deleted"})
+
+@auth_bp.route("/forgot-password", methods=["POST", "OPTIONS"])
+def forgot_password():
+    if request.method == "OPTIONS":
+        return handle_options()
+
+    data = request.get_json()
+    identifier = data.get("identifier")  # username or email
+
+    if not identifier:
+        return jsonify({"error": "Username or email is required"}), 400
+
+    user = User.query.filter((User.username == identifier) | (User.email == identifier)).first()
+    if not user:
+        return jsonify({"error": "No user found with that username/email"}), 404
+
+    # TODO: Generate a reset token & send email (mocked here)
+    reset_token = "TEMP_RESET_TOKEN"  # generate a real token in production
+    print(f"Password reset token for {user.username}: {reset_token}")
+
+    return jsonify({"message": "Password reset instructions sent to your email"}), 200

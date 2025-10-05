@@ -7,3 +7,6 @@ db = SQLAlchemy()
 migrate = Migrate()
 bcrypt = Bcrypt()
 jwt = JWTManager()
+
+
+jwt_blocklist = set()
