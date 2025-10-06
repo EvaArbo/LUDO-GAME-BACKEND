@@ -11,9 +11,9 @@ def handle_options():
     return '', 200
 
 
-# --------------------------
+
 # Start new game
-# --------------------------
+
 @game_bp.route("/new", methods=["POST", "OPTIONS"])
 @jwt_required()
 def start_new_game():
@@ -43,9 +43,9 @@ def start_new_game():
     }), 201
 
 
-# --------------------------
+
 # Resume last unfinished game
-# --------------------------
+
 @game_bp.route("/resume", methods=["GET", "OPTIONS"])
 @jwt_required()
 def resume_game():
@@ -73,9 +73,9 @@ def resume_game():
     }), 200
 
 
-# --------------------------
+
 # List all games for user
-# --------------------------
+
 @game_bp.route("/", methods=["GET", "OPTIONS"])
 @jwt_required()
 def list_games():
@@ -95,9 +95,9 @@ def list_games():
     ]), 200
 
 
-# --------------------------
+
 # Get game by ID
-# --------------------------
+
 @game_bp.route("/<int:game_id>", methods=["GET", "OPTIONS"])
 @jwt_required()
 def get_game(game_id):
@@ -116,9 +116,9 @@ def get_game(game_id):
     }), 200
 
 
-# --------------------------
+
 # Update game state
-# --------------------------
+
 @game_bp.route("/<int:game_id>", methods=["PUT", "OPTIONS"])
 @jwt_required()
 def update_game(game_id):
@@ -146,9 +146,9 @@ def update_game(game_id):
     }), 200
 
 
-# --------------------------
+
 # Delete game
-# --------------------------
+
 @game_bp.route("/<int:game_id>", methods=["DELETE", "OPTIONS"])
 @jwt_required()
 def delete_game(game_id):
