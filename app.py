@@ -32,7 +32,6 @@ def create_app():
     db.init_app(app)
     migrate.init_app(app, db)
 
-   
     # JWT setup
   
     app.config.setdefault("JWT_SECRET_KEY", os.environ.get("JWT_SECRET_KEY", "supersecret"))
