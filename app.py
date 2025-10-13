@@ -57,8 +57,13 @@ def create_app():
 
     return app
 
+app = create_app()
+
+@app.route("/",methods=["GET"])
+def index():
+    return "Ludo Game Backend is running!"
+
 
 if __name__ == "__main__":
     port=int(os.environ.get("PORT", 5000))
-    app = create_app()
     app.run(host="0.0.0.0",port=port,debug=True)
