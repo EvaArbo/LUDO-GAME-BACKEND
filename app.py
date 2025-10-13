@@ -20,7 +20,7 @@ def create_app():
   
     CORS(
         app,
-        origins=["http://localhost:5173"],  
+        origins=["https://ludo-game-ns8e.vercel.app"],  
         supports_credentials=True,         # required for Axios withCredentials
         methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
         allow_headers=["Content-Type", "Authorization"]
