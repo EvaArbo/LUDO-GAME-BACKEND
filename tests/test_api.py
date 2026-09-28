@@ -80,3 +80,23 @@ def test_logout_revokes_token_and_reset_is_honest(client):
     reset = client.post("/auth/forgot-password", json={"identifier": "Eva"})
     assert reset.status_code == 501
     assert "not available" in reset.json["error"]
+
+
+def test_render_database_configuration(monkeypatch):
+    from config import database_url
+    monkeypatch.delenv("DATABASE_URL", raising=False)
+    monkeypatch.setenv("RENDER", "true")
+    for name in ("HOST", "NAME", "USER", "PASS", "PORT"):
+        monkeypatch.delenv("SUPABASE_DB_" + name, raising=False)
+    with pytest.raises(RuntimeError, match="Set DATABASE_URL"):
+        database_url()
+
+    monkeypatch.setenv("SUPABASE_DB_HOST", "db.example.com")
+    monkeypatch.setenv("SUPABASE_DB_NAME", "postgres")
+    monkeypatch.setenv("SUPABASE_DB_USER", "postgres.test")
+    monkeypatch.setenv("SUPABASE_DB_PASS", "p@ss:word/with-special-chars")
+    monkeypatch.setenv("SUPABASE_DB_PORT", "5432")
+    url = database_url()
+    assert url.drivername == "postgresql+psycopg"
+    assert url.password == "p@ss:word/with-special-chars"
+    assert url.query["sslmode"] == "require"

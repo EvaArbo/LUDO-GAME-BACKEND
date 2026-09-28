@@ -16,7 +16,7 @@ cp .env.example .env
 python app.py
 ```
 
-Set unique random `SECRET_KEY` and `JWT_SECRET_KEY` values in your private `.env`. Set `DATABASE_URL` to your database URL if you are using PostgreSQL. Never commit `.env`.
+Set unique random `SECRET_KEY` and `JWT_SECRET_KEY` values in your private `.env`. Set `DATABASE_URL` to your database URL if you are using PostgreSQL. On Render, you can instead set all five `SUPABASE_DB_HOST`, `SUPABASE_DB_NAME`, `SUPABASE_DB_USER`, `SUPABASE_DB_PASS`, and `SUPABASE_DB_PORT` variables. The app builds a secure PostgreSQL connection from them and refuses to start on Render if no database is configured. Never commit `.env`.
 
 Production start command: `gunicorn wsgi:app`. The app also exposes `app` in `app.py` for existing deployments. Set Render environment variables directly rather than uploading `.env`. Set `FRONTEND_ORIGINS` to a comma-separated list of allowed frontend origins without trailing slashes.
 

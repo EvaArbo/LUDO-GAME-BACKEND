@@ -1,17 +1,40 @@
 import os
 from datetime import timedelta
 from dotenv import load_dotenv
+from sqlalchemy.engine import URL
 
 load_dotenv()
 
 
 def database_url():
-    url = os.getenv("DATABASE_URL", "sqlite:///ludo-dev.db")
-    if url.startswith("postgres://"):
-        url = "postgresql://" + url[len("postgres://"):]
-    if url.startswith("postgresql://"):
-        url = "postgresql+psycopg://" + url[len("postgresql://"):]
-    return url
+    url = os.getenv("DATABASE_URL")
+    if url:
+        if url.startswith("postgres://"):
+            url = "postgresql://" + url[len("postgres://"):]
+        if url.startswith("postgresql://"):
+            url = "postgresql+psycopg://" + url[len("postgresql://"):]
+        return url
+
+    names = ("SUPABASE_DB_HOST", "SUPABASE_DB_NAME", "SUPABASE_DB_USER",
+             "SUPABASE_DB_PASS", "SUPABASE_DB_PORT")
+    values = {name: os.getenv(name) for name in names}
+    if any(values.values()):
+        missing = [name for name, value in values.items() if not value]
+        if missing:
+            raise RuntimeError("Incomplete Supabase database configuration: " + ", ".join(missing))
+        return URL.create(
+            "postgresql+psycopg",
+            username=values["SUPABASE_DB_USER"],
+            password=values["SUPABASE_DB_PASS"],
+            host=values["SUPABASE_DB_HOST"],
+            port=int(values["SUPABASE_DB_PORT"]),
+            database=values["SUPABASE_DB_NAME"],
+            query={"sslmode": "require"},
+        )
+
+    if os.getenv("RENDER") == "true":
+        raise RuntimeError("Set DATABASE_URL or the SUPABASE_DB_* environment variables on Render")
+    return "sqlite:///ludo-dev.db"
 
 
 class Config:
