@@ -55,12 +55,8 @@ def resume_game():
     user_id = int(get_jwt_identity())
 
     # Find latest unfinished game where winner is null
-    game = (
-        Game.query
-        .filter(Game.user_id == user_id, Game.state['winner'].astext.is_(None))
-        .order_by(Game.updated_at.desc())
-        .first()
-    )
+    games = Game.query.filter_by(user_id=user_id).order_by(Game.updated_at.desc()).all()
+    game = next((item for item in games if item.state.get("winner") is None), None)
 
     if not game:
         return jsonify({"message": "No unfinished game found"}), 404
@@ -130,9 +126,9 @@ def update_game(game_id):
     if not game:
         return jsonify({"error": "Game not found"}), 404
 
-    data = request.get_json()
+    data = request.get_json(silent=True) or {}
     new_state = data.get("state")
-    if not new_state:
+    if not isinstance(new_state, dict) or not new_state:
         return jsonify({"error": "State is required"}), 400
 
     game.state = new_state

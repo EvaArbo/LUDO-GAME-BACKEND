@@ -1,186 +1,61 @@
-# 🎮 Game Backend (Flask + SQLAlchemy + JWT)
+# Ludo Fighters backend
 
-This backend provides:
-- 🔐 **User Authentication** (signup/login with JWT)
-- 🎲 **Game State Management** (save & resume progress)
-- 🔗 **REST APIs** for React frontend
+Flask API for accounts and saved game state. The [React frontend](https://github.com/EvaArbo/LUDO-GAME) renders the board and runs the dice, AI turns, and token movement. The backend stores submitted state; it does not validate Ludo rules or provide real-time multiplayer.
 
-Built with **Flask**, **SQLAlchemy**, and **JWT**.
+## Run locally
 
----
-
-## 🛠️ 1. Install Python
-
-Make sure you have **Python 3.8+** installed.
-
-Check version:
-```bash
-python --version
-```
-
-If you see something like `Python 3.10.9`, you’re good.
-
----
-
-## 📥 2. Clone the Repository
+Use Python 3.12 or newer and PostgreSQL for deployment. SQLite also works for local development.
 
 ```bash
-git clone <repo-url>
-cd backend
-```
-
----
-
-## 🐍 3. Create Virtual Environment
-
-```bash
-python -m venv venv
-```
-
-Activate the environment:
-
-- **Linux/macOS**
-  ```bash
-  source venv/bin/activate
-  ```
-
-- **Windows (PowerShell)**
-  ```bash
-  venv\Scripts\activate
-  ```
-
----
-
-## 📦 4. Install Dependencies
-
-Create `requirements.txt` with this content:
-
-```
-Flask
-Flask-SQLAlchemy
-Flask-Migrate
-flask-jwt-extended
-Werkzeug
-Flask-Cors
-python-dotenv
-psycopg2-binary   # only needed for Postgres
-```
-
-Then install:
-```bash
+git clone https://github.com/EvaArbo/LUDO-GAME-BACKEND.git
+cd LUDO-GAME-BACKEND
+python3 -m venv .venv
+source .venv/bin/activate
 pip install -r requirements.txt
+cp .env.example .env
+python app.py
 ```
 
----
+Set unique random `SECRET_KEY` and `JWT_SECRET_KEY` values in your private `.env`. Set `DATABASE_URL` to your database URL if you are using PostgreSQL. Never commit `.env`.
 
-## ⚙️ 5. Environment Variables
+Production start command: `gunicorn wsgi:app`. The app also exposes `app` in `app.py` for existing deployments. Set Render environment variables directly rather than uploading `.env`. Set `FRONTEND_ORIGINS` to a comma-separated list of allowed frontend origins without trailing slashes.
 
-Create a file named `.env` in the backend folder:
+The app currently calls `db.create_all()` on startup for compatibility with earlier deployments. For later schema changes, use Flask-Migrate rather than relying on `create_all()` to alter existing tables.
 
-```
-FLASK_APP=run.py
-FLASK_ENV=development
-SECRET_KEY=super-secret-key
-JWT_SECRET_KEY=super-jwt-secret
-SQLALCHEMY_DATABASE_URI=sqlite:///app.db   # Dev
-# For production: postgresql://user:password@host:5432/dbname
-```
+## Routes
 
----
+| Method | Path | Purpose |
+| --- | --- | --- |
+| POST | `/auth/register` | Register with `username`, `email`, `password` |
+| POST | `/auth/login` | Return one-hour access token for `username` and `password` |
+| POST | `/auth/logout` | Revoke token in the current server process |
+| GET, PUT, DELETE | `/auth/user` | Manage the signed-in account |
+| POST | `/game/new` | Create a saved game |
+| GET | `/game/resume` | Return the most recently updated unfinished game |
+| GET | `/game/` | List your games |
+| GET, PUT, DELETE | `/game/<id>` | Manage one of your games |
 
-## 🗄️ 6. Database Setup
+Protected routes need `Authorization: Bearer <access_token>`. The `POST /auth/forgot-password` endpoint returns 501 because there is no email delivery or reset flow yet; it does not pretend a reset email was sent.
 
-Initialize database migrations:
-```bash
-flask db init
-```
-
-Create first migration:
-```bash
-flask db migrate -m "Initial migration"
-```
-
-Apply migration:
-```bash
-flask db upgrade
-```
-
-This will create the `app.db` SQLite file (development DB).
-
----
-
-## ▶️ 7. Run the Server
+Example registration:
 
 ```bash
-flask run
+curl -X POST http://127.0.0.1:5000/auth/register \
+  -H 'Content-Type: application/json' \
+  -d '{"username":"player1","email":"player1@example.com","password":"example-password"}'
 ```
 
-Server will start at:
-```
-http://127.0.0.1:5000/
-```
+## Checks
 
----
-
-## 🔹 8. Test the API
-
-### Signup
 ```bash
-curl -X POST http://127.0.0.1:5000/auth/signup  -H "Content-Type: application/json"  -d '{"name":"Alice","email":"alice@mail.com","password":"1234"}'
+pip install pytest
+python -m pytest -q
 ```
 
-### Login
-```bash
-curl -X POST http://127.0.0.1:5000/auth/login  -H "Content-Type: application/json"  -d '{"email":"alice@mail.com","password":"1234"}'
-```
+The tests cover registration, duplicate accounts, login, CORS preflight, game save and resume, account isolation, logout, and the password reset response.
 
-Response:
-```json
-{
-  "access_token": "eyJ0eXAiOiJKV1QiLCJhbGci...",
-  "refresh_token": "..."
-}
-```
+## Known limits
 
-Copy the `access_token`.
-
----
-
-### Create New Game
-```bash
-curl -X POST http://127.0.0.1:5000/game/new  -H "Content-Type: application/json"  -H "Authorization: Bearer <ACCESS_TOKEN>"  -d '{"token_positions":[0,1,5],"player_turn":1,"dice_value":6}'
-```
-
-### Get Game State
-```bash
-curl -X GET http://127.0.0.1:5000/game/1  -H "Authorization: Bearer <ACCESS_TOKEN>"
-```
-
-### Update Game
-```bash
-curl -X PUT http://127.0.0.1:5000/game/1  -H "Content-Type: application/json"  -H "Authorization: Bearer <ACCESS_TOKEN>"  -d '{"token_positions":[2,3,7],"player_turn":2,"dice_value":4}'
-```
-
----
-
-## 👥 Team Workflow
-
-- **Adrian** → Flask setup, DB, JWT config  
-- **Najma** → Auth API (signup/login)  
-- **Maina** → Middleware + route protection  
-- **Evah** → Game endpoints (new, get, update)  
-
----
-
-## 🔐 Security Notes
-
-- Use HTTPS in production
-- Keep `SECRET_KEY` and `JWT_SECRET_KEY` private
-- Use PostgreSQL for production
-- Add refresh tokens + blacklisting if scaling
-
----
-
-## 📄 License
-
-MIT License.
+- Password reset needs a real email provider and a secure reset-token flow.
+- The logout blocklist is in memory, so revoked tokens are not shared across workers or retained after a restart. Access tokens expire after one hour.
+- The game API stores client-supplied state; it does not enforce dice, capture, turn, or win rules.

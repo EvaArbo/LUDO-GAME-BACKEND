@@ -1,22 +1,19 @@
+from datetime import datetime, timezone
+from sqlalchemy.dialects.postgresql import JSONB
 from app.extensions import db
-from datetime import datetime
-from sqlalchemy.dialects.postgresql import JSONB   # ✅ import JSONB
+
 
 class Game(db.Model):
     __tablename__ = "games"
 
     id = db.Column(db.Integer, primary_key=True)
     user_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=False)
+    # PostgreSQL keeps JSONB; SQLite uses JSON for local development and tests.
+    state = db.Column(db.JSON().with_variant(JSONB, "postgresql"), nullable=False, default=dict)
+    created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc), nullable=False)
+    updated_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc),
+                           onupdate=lambda: datetime.now(timezone.utc), nullable=False)
 
-    # ✅ JSONB allows querying JSON fields in Postgres
-    state = db.Column(JSONB, nullable=False, default=dict)
-
-    created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
-    updated_at = db.Column(
-        db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False
-    )
-
-    # Optional helper to return serialized dict
     def to_dict(self):
         return {
             "id": self.id,
